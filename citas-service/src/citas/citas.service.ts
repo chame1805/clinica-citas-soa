@@ -50,6 +50,13 @@ export class CitasService {
     await this.validarPaciente(cita);
     await this.reservarSlot(cita);
 
+    try {
+      await this.validarReglasDeNegocio(cita);
+    } catch (error) {
+      await this.compensarReserva(cita, (error as Error).message);
+      throw error;
+    }
+
     cita.estado = CitaEstado.CONFIRMADA;
     await this.citasRepository.save(cita);
 
@@ -116,6 +123,36 @@ export class CitasService {
       await this.marcarFallida(cita, 'No se pudo reservar el horario (medicos-agenda-service no disponible)');
       throw new ServiceUnavailableException('medicos-agenda-service no disponible');
     }
+  }
+
+  private async validarReglasDeNegocio(cita: Cita): Promise<void> {
+    const citaConflicto = await this.citasRepository.findOne({
+      where: {
+        pacienteId: cita.pacienteId,
+        medicoId: cita.medicoId,
+        estado: CitaEstado.CONFIRMADA,
+      },
+    });
+    if (citaConflicto) {
+      throw new ConflictException(
+        `El paciente ya tiene una cita confirmada con este médico (cita ${citaConflicto.id})`,
+      );
+    }
+  }
+
+  private async compensarReserva(cita: Cita, motivo: string): Promise<void> {
+    this.logger.warn(`Compensando cita ${cita.id}: ${motivo}`);
+    try {
+      await firstValueFrom(
+        this.httpService.post(`${this.agendaUrl}/slots/${cita.slotId}/liberar`, {
+          citaId: cita.id,
+          motivo,
+        }),
+      );
+    } catch (error) {
+      this.logger.error(`Falló la compensación del slot ${cita.slotId}: ${(error as AxiosError).message}`);
+    }
+    await this.marcarFallida(cita, motivo);
   }
 
   private async marcarFallida(cita: Cita, motivo: string): Promise<void> {
