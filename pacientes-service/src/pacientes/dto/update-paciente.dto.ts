@@ -1,8 +1,4 @@
-export class UpdatePacienteDto {
-  nombre?: string;
-  apellido?: string;
-  fechaNacimiento?: string;
-  documentoIdentidad?: string;
-  email?: string;
-  telefono?: string;
-}
+import { PartialType } from '@nestjs/swagger';
+import { CreatePacienteDto } from './create-paciente.dto';
+
+export class UpdatePacienteDto extends PartialType(CreatePacienteDto) {}
