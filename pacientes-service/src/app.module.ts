@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PacientesModule } from './pacientes/pacientes.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PacientesModule } from './pacientes/pacientes.module';
       }),
     }),
     PacientesModule,
+    RedisModule,
   ],
 })
 export class AppModule {}
