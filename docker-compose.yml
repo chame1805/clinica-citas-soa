@@ -1,0 +1,129 @@
+services:
+  postgres-pacientes:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pacientes_user
+      POSTGRES_PASSWORD: pacientes_pass
+      POSTGRES_DB: pacientes_db
+    ports:
+      - "5443:5432"
+    volumes:
+      - pacientes_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pacientes_user -d pacientes_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-agenda:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: agenda_user
+      POSTGRES_PASSWORD: agenda_pass
+      POSTGRES_DB: agenda_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - agenda_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agenda_user -d agenda_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-citas:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: citas_user
+      POSTGRES_PASSWORD: citas_pass
+      POSTGRES_DB: citas_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - citas_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U citas_user -d citas_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pacientes-service:
+    build: ./pacientes-service
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DB_HOST: postgres-pacientes
+      DB_PORT: 5432
+      DB_USER: pacientes_user
+      DB_PASSWORD: pacientes_pass
+      DB_NAME: pacientes_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres-pacientes:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  medicos-agenda-service:
+    build: ./medicos-agenda-service
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      DB_HOST: postgres-agenda
+      DB_PORT: 5432
+      DB_USER: agenda_user
+      DB_PASSWORD: agenda_pass
+      DB_NAME: agenda_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres-agenda:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  citas-service:
+    build: ./citas-service
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DB_HOST: postgres-citas
+      DB_PORT: 5432
+      DB_USER: citas_user
+      DB_PASSWORD: citas_pass
+      DB_NAME: citas_db
+      PACIENTES_SERVICE_URL: http://pacientes-service:3001
+      AGENDA_SERVICE_URL: http://medicos-agenda-service:3002
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: clinica-super-secreto
+      DEMO_USER: recepcion
+      DEMO_PASSWORD: clinica123
+    depends_on:
+      postgres-citas:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pacientes-service:
+        condition: service_started
+      medicos-agenda-service:
+        condition: service_started
+
+volumes:
+  pacientes_data:
+  agenda_data:
+  citas_data:
