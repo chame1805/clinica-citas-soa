@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CitasModule } from './citas/citas.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CitasModule } from './citas/citas.module';
         synchronize: true,
       }),
     }),
+    RedisModule,
     CitasModule,
   ],
 })

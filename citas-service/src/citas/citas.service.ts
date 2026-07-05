@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 import { Cita, CitaEstado } from './entities/cita.entity';
 import { CreateCitaDto } from './dto/create-cita.dto';
+import { RedisPublisherService } from '../redis/redis-publisher.service';
 
 interface PacienteEstadoResponse {
   existe: boolean;
@@ -30,6 +31,7 @@ export class CitasService {
     @InjectRepository(Cita) private readonly citasRepository: Repository<Cita>,
     private readonly httpService: HttpService,
     configService: ConfigService,
+    private readonly redisPublisher: RedisPublisherService,
   ) {
     this.pacientesUrl = configService.get<string>('PACIENTES_SERVICE_URL', 'http://localhost:3001');
     this.agendaUrl = configService.get<string>('AGENDA_SERVICE_URL', 'http://localhost:3002');
@@ -50,6 +52,13 @@ export class CitasService {
 
     cita.estado = CitaEstado.CONFIRMADA;
     await this.citasRepository.save(cita);
+
+    await this.redisPublisher.publish('cita.confirmada', {
+      citaId: cita.id,
+      pacienteId: cita.pacienteId,
+      medicoId: cita.medicoId,
+      slotId: cita.slotId,
+    });
 
     return cita;
   }
