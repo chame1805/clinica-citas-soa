@@ -90,3 +90,5 @@ liberará el slot automáticamente y la cita quedará `FALLIDA`.
 
 - Repositorio: _pendiente_
 - Sistema desplegado: _pendiente_
+
+<!-- Integración final de Saga lista -->
